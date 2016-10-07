@@ -62,28 +62,17 @@ class RTETask(AbstractTask):
         # Sentence-aggregate embeddings
         final_outputs = module_prep_model(model, N, self.s0pad, self.s1pad, self.c)
 
-        # Measurement
-
-        if self.c['ptscorer'] == '1':
-            # special scoring mode just based on the answer
-            # (assuming that the question match is carried over to the answer
-            # via attention or another mechanism)
-            ptscorer = B.cat_ptscorer
-            final_outputs = [final_outputs[1]]
-        else:
-            ptscorer = self.c['ptscorer']
-
         kwargs = dict()
         if ptscorer == B.mlp_ptscorer:
             kwargs['sum_mode'] = self.c['mlpsum']
             kwargs['Dinit'] = self.c['Dinit']
 
         model.add_node(name='scoreS0', input=ptscorer(model, final_outputs, self.c['Ddim'], N, self.c['l2reg'], pfx="out0", **kwargs),
-                       layer=Activation('sigmoid'))
+                       layer=Activation('linear'))
         model.add_node(name='scoreS1', input=ptscorer(model, final_outputs, self.c['Ddim'], N, self.c['l2reg'], pfx="out1", **kwargs),
-                       layer=Activation('sigmoid'))
+                       layer=Activation('linear'))
         model.add_node(name='scoreS2', input=ptscorer(model, final_outputs, self.c['Ddim'], N, self.c['l2reg'], pfx="out2", **kwargs),
-                       layer=Activation('sigmoid'))
+                       layer=Activation('linear'))
 
         model.add_node(name='scoreV', inputs=['scoreS0', 'scoreS1', 'scoreS2'], merge_mode='concat', layer=Activation('softmax'))
         model.add_output(name='score', input='scoreV')
